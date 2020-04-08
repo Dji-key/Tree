@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tree example</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+</head>
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.21.1/babel.min.js"></script>
+<body>
+<div id="contents">
+    <p>All nodes (click to edit)</p>
+    <div class="tree" v-if="tree">
+        <div class="cell" v-for="node in tree">
+            <input type="button" :value="node.title" @click="currentNode = node"/>
+            <template v-if="node.parent">
+                parent: <input type="button" :value="node.parent.title" @click="currentNode = Object.assign({}, node.parent)">
+            </template>
+        </div>
+    </div>
+    <p>Create <input type="button" value="new" @click="createEmptyNode"> or edit existing</p>
+    <div class="create">
+        <p v-if="currentNode.id">id: <input disabled  :value="currentNode.id"></p>
+        <p>title: <input v-model="currentNode.title"></p>
+        <p>parent:
+            <select v-model="currentNode.parent">
+                <option disabled selected value> -- select parent -- </option>
+                <option v-for="node in tree" :value="node">{{node.title}}</option>
+            </select>
+        </p>
+        <template v-if="currentNode.id">
+            <input type="button" value="update" @click="updateNode">
+            <input type="button" value="delete" @click="deleteNode">
+        </template>
+        <input v-else type="button" value="create" @click="createNewNode">
+    </div>
+</div>
+</body>
+<script type="text/babel">
+    var app = new Vue({
+        el: '#contents',
+        data: {
+            tree: {},
+            currentNode: {}
+        },
+        created: function () {
+            this.retrieveAll();
+        },
+        methods: {
+            retrieveAll: function() {
+                console.log("retrieve");
+                $.get("/node/all", function (data) {
+                    app.tree = data;
+                });
+            },
+            createEmptyNode: function() {
+                this.currentNode = {
+                    id: null,
+                    title: null,
+                    parent: null
+                };
+            },
+            createNewNode: function () {
+                // $.post("/node/new", this.currentNode)
+                $.ajax(
+                    {
+                        url: "/node/new",
+                        type: "POST",
+                        data: JSON.stringify(this.currentNode),
+                        dataType: "json",
+                        contentType: "application/json",
+                        success: function () {
+                            app.retrieveAll()
+                        },
+                        error: function () {
+                            alert("Server error")
+                        }
+                    }
+                )
+            },
+            updateNode: function () {
+                $.ajax(
+                    {
+                        url: "/node/" + this.currentNode.id,
+                        type: "PUT",
+                        data: JSON.stringify(this.currentNode),
+                        dataType: "json",
+                        contentType: "application/json",
+                        success: function () {
+                            app.retrieveAll()
+                        },
+                        error: function () {
+                            alert("Server error")
+                        }
+                    }
+                )
+            },
+            deleteNode: function () {
+                $.ajax(
+                    {
+                        url: "/node/" + this.currentNode.id,
+                        type: "DELETE",
+                        success: function () {
+                            app.retrieveAll()
+                        },
+                        error: function () {
+                            alert("Delete children first")
+                        }
+                    }
+                )
+            }
+        }
+    });
+</script>
+</html>
+<style>
+    .tree {
+        padding-bottom: 3%;
+    }
+    .cell {
+        padding-bottom: 1%;
+    }
+</style>
